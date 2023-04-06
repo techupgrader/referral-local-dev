@@ -1,0 +1,92 @@
+version: "3.7"
+
+services:
+  rl-db:
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./pg-data:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Welcome123!
+      PGDATA: /var/lib/postgresql/data/pgdata
+      VIRTUAL_HOST: db.referrallab.local
+      VIRTUAL_PORT: 5432
+  rl-api:
+    container_name: rl-api
+    build: ../rl-api
+    volumes:
+      - ../rl-api:/app
+      # One-way volume to use node_modules from inside image
+      - /app/node_modules
+    ports:
+      - 3002
+    depends_on:
+      - rl-db
+    environment:
+      NODE_ENV: local
+      ENV: local
+      API_PORT: 3002
+      JWT_ISSUER: api.referrallab.local
+      JWT_LIFETIME: 1h
+      JWT_SALT: gAd6EhWrEpjJwnpTCPvtZkpS3At7vTuuGd8GJ3gyn99dapUQFa54HxMAEjCKR5urzTaELdF3Cw9pyyshcEBEmCRq5hkFfqWVT227Zm8FcpmPFXsGu3zuGgCp5zh4jsCpUNFE4K5pfbDKCzMU3u8GQ6VMa5PqyeS2HEPaArvhkKvJjukHsY6xLPAk7qbk23KeferBzfHNRHY2mqpLv7b6db8hXktV3QpeYVryGWD3s6LM22LnJMBgvzEa6qgEFAVW
+      PGUSER: rl_api
+      PGHOST: rl-db
+      PGPASSWORD: Welcome123!
+      PGDATABASE: referral-lab
+      PGPORT: 5432
+      VIRTUAL_HOST: api.referrallab.local
+      VIRTUAL_PORT: 3002
+      CHOKIDAR_USEPOLLING: "true"
+      AWS_FILE_UPLOAD_SECRET: 2T2PF1Zr08zddiRZ23Um1juvtfj/0t9eOcD7z3wF
+      AWS_FILE_UPLOAD_ACCESS_ID:  AKIA53PFJOGEH6TOTT6Y
+    stdin_open: true
+    command: npm start
+  rl-web:
+    container_name: rl-web
+    build: ../rl-web
+    volumes:
+      - ../rl-web:/app
+      # One-way volume to use node_modules from inside image
+      - /app/node_modules
+    ports:
+      - 3000
+    environment:
+      NODE_ENV: local
+      REACT_APP_API_BASE_URI: http://api.referrallab.local/v1
+      VIRTUAL_HOST: app.referrallab.local
+      VIRTUAL_PORT: 3000
+      CHOKIDAR_USEPOLLING: "true"
+    stdin_open: true
+    command: npm start
+  rl-pwa:
+    container_name: rl-pwa
+    build: ../rl-pwa
+    volumes:
+      - ../rl-pwa:/app
+      # One-way volume to use node_modules from inside image
+      - /app/node_modules
+    ports:
+      - 3004
+    environment:
+      NODE_ENV: local
+      REACT_APP_API_BASE_URI: http://api.referrallab.local/v1
+      VIRTUAL_HOST: pwa.referrallab.local
+      VIRTUAL_PORT: 3004
+      CHOKIDAR_USEPOLLING: "true"
+    stdin_open: true
+    command: npm start
+  nginx-proxy-rl:
+    image: jwilder/nginx-proxy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: unless-stopped
+
+networks:
+  default:
+    name: nginx-proxy-rl
